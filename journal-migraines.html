@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Journal des migraines</title>
+<meta name="theme-color" content="#F7F4EE" id="themeMeta">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Migraines">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="Migraines">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" id="touchIcon" href="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+<style>
+:root{
+  --bg:#F7F4EE; --surface:#FFFDF9; --surface2:#EFEBE2; --text:#2D3D52; --muted:#657185; --line:#E0DACD;
+  --accent:#2D3D52; --on-accent:#FFFFFF; --sage:#8EA48B; --sage-soft:#BECFBB; --on-sage:#1F2B3A;
+  --left:#3F72AF; --right:#D9741F; --both:#7B5EA7; --none:#8A9099; --menses:#C9444A; --danger:#B3363C;
+  --warn-bg:#FBF0DA; --warn-text:#5E4208; --zone:rgba(142,164,139,.38); --dash:#5F7A5C;
+  --shadow:0 2px 10px rgba(45,61,82,.10); --overlay:rgba(20,26,34,.45);
+}
+:root[data-theme="dark"]{
+  --bg:#12171E; --surface:#1B232D; --surface2:#27323F; --text:#E8ECF1; --muted:#9AA6B4; --line:#2E3A48;
+  --accent:#8EA48B; --on-accent:#10161D; --sage:#8EA48B; --sage-soft:#3B4D3C; --on-sage:#E8F0E6;
+  --left:#6FA3DE; --right:#F0A050; --both:#A58BD6; --none:#9AA1AA; --menses:#E0636A; --danger:#F0868C;
+  --warn-bg:#3A311C; --warn-text:#F0DDAE; --zone:rgba(142,164,139,.30); --dash:#9DB59A;
+  --shadow:0 2px 10px rgba(0,0,0,.35); --overlay:rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;touch-action:manipulation}
+body.lock{overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.4;cursor:default}
+input,textarea,select{font:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:0 12px;min-height:48px;width:100%}
+textarea{padding:10px 12px;resize:vertical;min-height:88px}
+:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+h1{font-size:22px;margin:0;font-weight:700}
+h2{font-size:18px;margin:0 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 8px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+p{margin:0 0 8px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+#app{max-width:640px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.top{display:flex;align-items:center;justify-content:space-between;min-height:56px}
+.icon-btn{width:48px;height:48px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.icon-btn:active{background:var(--surface2)}
+.card{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:14px;margin-bottom:14px}
+
+.cal-head{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.cal-head .lbl{flex:1;font-size:17px;font-weight:700;white-space:nowrap}
+.pill{min-height:44px;padding:0 12px;border-radius:22px;background:var(--surface2);font-size:14px;font-weight:600}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow span{text-align:center;font-size:13px;font-weight:600;color:var(--muted);padding:4px 0}
+.day{position:relative;min-height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;gap:3px;background:var(--bg)}
+.day:active{background:var(--surface2)}
+.day.today{box-shadow:inset 0 0 0 2.5px var(--accent)}
+.day .num{font-size:15px;font-weight:600;line-height:1}
+.day .dot{width:11px;height:11px;border-radius:50%}
+.day .dot.c-L{background:var(--left)} .day .dot.c-R{background:var(--right)} .day .dot.c-B{background:var(--both)} .day .dot.c-N{background:var(--none)}
+.day .mdot{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--menses)}
+.dashes{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:40px}
+.dash{width:7px;height:3px;border-radius:2px;background:var(--dash)}
+.ph{min-height:56px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%}
+.legend i.l{background:var(--left)} .legend i.r{background:var(--right)} .legend i.b{background:var(--both)} .legend i.n{background:var(--none)}
+.legend i.m{width:8px;height:8px;background:var(--menses)}
+.legend i.d{width:12px;height:3px;border-radius:2px;background:var(--dash)}
+.legend i.t{border-radius:6px;width:14px;height:14px;box-shadow:inset 0 0 0 2px var(--accent)}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tile{background:var(--bg);border-radius:14px;padding:10px 12px}
+.tile b{display:block;font-size:24px;line-height:1.2}
+.tile span{font-size:13px;color:var(--muted)}
+.rows .r{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.alert{background:var(--warn-bg);color:var(--warn-text);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:10px}
+.verdict{background:var(--bg);border-radius:12px;padding:10px 12px;margin:10px 0 6px}
+
+.frise{margin-top:10px}
+.fr-row{display:grid;grid-template-columns:42px repeat(20,1fr);gap:1px;align-items:center;margin-bottom:2px}
+.fr-lab{font-size:10px;color:var(--muted)}
+.fr-c{aspect-ratio:1;border-radius:3px;background:var(--surface2);position:relative}
+.fr-c.zone{box-shadow:inset 0 0 0 1.5px var(--sage);background:var(--zone)}
+.fr-c.m{background:var(--menses)}
+.fr-c.mig::after{content:"";position:absolute;inset:27%;border-radius:50%;background:var(--text)}
+.fr-c.m.mig::after{background:#fff}
+.fr-c.fut{opacity:.3}
+.fr-head .fr-c{aspect-ratio:auto;background:none;box-shadow:none;font-size:9px;text-align:center;color:var(--muted);overflow:visible;white-space:nowrap}
+
+.foot{text-align:center;font-size:13px;color:var(--muted);padding:6px 10px}
+
+/* couches */
+.layer{position:fixed;inset:0;z-index:20;visibility:hidden;transition:visibility 0s linear .3s}
+.layer.open{visibility:visible;transition-delay:0s}
+.scrim{position:absolute;inset:0;background:var(--overlay);opacity:0;transition:opacity .3s}
+.layer.open .scrim{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;width:100%;max-width:640px;max-height:92vh;max-height:92dvh;background:var(--bg);border-radius:22px 22px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 -6px 24px rgba(0,0,0,.22)}
+.layer.open .sheet{transform:none}
+.sh-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 4px 18px}
+.sh-head h2{margin:0;font-size:19px}
+.sh-body{overflow-y:auto;padding:4px 16px 12px;flex:1;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.sh-foot{display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--bg)}
+.btn{min-height:52px;border-radius:14px;font-weight:700;font-size:16px;padding:0 10px;flex:1;border:2px solid var(--line);background:var(--surface)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);flex:1.5}
+.btn.danger{color:var(--danger);border-color:var(--danger);background:transparent}
+.btn.block{display:block;width:100%;margin-bottom:8px;flex:none}
+.sec{margin-top:16px}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;min-height:56px;border-radius:14px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:17px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.seg button[data-c="L"][aria-pressed="true"]{background:var(--left);border-color:var(--left);color:#fff}
+.seg button[data-c="R"][aria-pressed="true"]{background:var(--right);border-color:var(--right);color:#fff}
+.seg button[data-c="B"][aria-pressed="true"]{background:var(--both);border-color:var(--both);color:#fff}
+.seg.int button{font-size:22px}
+.seg.span{gap:2px}
+.seg.span button{min-width:0;min-height:48px;font-size:17px;border-radius:10px}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+.dose{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border-radius:14px;padding:6px 6px 6px 14px;margin-bottom:8px;min-height:60px}
+.dose .nm{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:52px;height:48px;border-radius:12px;background:var(--surface2);font-size:26px;font-weight:700;line-height:1}
+.step output{width:30px;text-align:center;font-size:22px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:0 14px;border-radius:22px;border:1.5px solid var(--line);background:var(--surface);font-size:15px}
+.chip[aria-pressed="true"]{background:var(--sage-soft);color:var(--on-sage);border-color:var(--sage);font-weight:600}
+.chip.rm::after{content:" ×";font-weight:700}
+.addrow{display:flex;gap:8px;margin-top:8px}
+.addrow .btn{flex:none;min-height:48px;padding:0 16px}
+.row-switch{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:56px;background:var(--surface);border-radius:14px;padding:0 14px;font-weight:600;font-size:17px;text-align:left}
+.sw{width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.row-switch[aria-checked="true"] .sw{background:var(--accent)}
+.row-switch[aria-checked="true"] .sw::after{transform:translateX(22px)}
+.dur{display:flex;align-items:center;gap:10px}
+.dur input{max-width:120px;text-align:center;font-size:20px;font-weight:700}
+
+.page{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;transform:translateX(100%);visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s linear .3s;-webkit-overflow-scrolling:touch}
+.page.open{transform:none;visibility:visible;transition-delay:0s}
+.page .in{max-width:640px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.pg-head{display:flex;align-items:center;gap:6px;min-height:56px;margin-bottom:6px}
+.list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;text-align:left;border-top:1px solid var(--line);padding:6px 0}
+.list-row:first-of-type{border-top:0}
+.list-row small{color:var(--muted)}
+.lnk{font-weight:700;color:var(--accent);min-height:48px;display:inline-flex;align-items:center;padding:0 4px}
+:root[data-theme="dark"] .lnk{color:var(--sage)}
+
+.dlg{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay)}
+.dlg .box{background:var(--surface);border-radius:20px;padding:18px;width:100%;max-width:420px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto}
+.dlg .acts{display:flex;gap:8px;margin-top:14px}
+.dlg label{display:block;font-weight:600;margin:10px 0 6px;font-size:15px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--accent);color:var(--on-accent);padding:12px 18px;border-radius:24px;font-size:15px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>Journal des migraines</h1>
+    <button class="icon-btn" id="btnSettings" aria-label="Réglages"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+  </header>
+
+  <section class="card" aria-label="Calendrier">
+    <div class="cal-head">
+      <div class="lbl" id="monthLabel" aria-live="polite"></div>
+      <button class="pill" id="btnToday">Aujourd'hui</button>
+      <button class="icon-btn" id="btnPrev" aria-label="Mois précédent"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="icon-btn" id="btnNext" aria-label="Mois suivant"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="dow"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card" id="statsCard" aria-label="Statistiques du mois"></section>
+  <section class="card" id="cycleCard" aria-label="Lien avec les règles" hidden></section>
+
+  <p class="foot">Pensez à exporter régulièrement une sauvegarde (Réglages, Données).</p>
+  <p class="foot">Outil de suivi personnel, ne remplace pas un avis médical</p>
+</div>
+
+<!-- fiche du jour -->
+<div class="layer" id="sheetLayer" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="scrim" id="shScrim"></div>
+  <div class="sheet">
+    <div class="sh-head">
+      <h2 id="shTitle"></h2>
+      <button class="icon-btn" id="shClose" aria-label="Fermer"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="sh-body" id="shBody"></div>
+    <div class="sh-foot">
+      <button class="btn danger" id="shDel">Supprimer</button>
+      <button class="btn" id="shCancel">Annuler</button>
+      <button class="btn primary" id="shSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- réglages -->
+<div class="page" id="settings" role="dialog" aria-modal="true" aria-label="Réglages">
+  <div class="in">
+    <div class="pg-head">
+      <button class="icon-btn" id="stBack" aria-label="Retour"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>Réglages</h1>
+    </div>
+    <div id="stBody"></div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- utilitaires ---------- */
+var $=function(s){return document.querySelector(s)};
+var pad=function(n){return String(n).padStart(2,'0')};
+var ymd=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+var parseD=function(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2],12)};
+var addDays=function(s,n){var d=parseD(s);d.setDate(d.getDate()+n);return ymd(d)};
+var dnum=function(s){var p=s.split('-').map(Number);return Math.round(Date.UTC(p[0],p[1]-1,p[2])/864e5)};
+var dstr=function(n){var d=new Date(n*864e5);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())};
+var todayStr=function(){return ymd(new Date())};
+var uid=function(){return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4)};
+var clone=function(o){return o?JSON.parse(JSON.stringify(o)):o};
+var cap=function(s){return s.charAt(0).toUpperCase()+s.slice(1)};
+var fmtLong=function(k){return cap(parseD(k).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))};
+var fmtShort=function(k){var p=k.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
+var DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+
+function h(tag,attrs){
+  var e=document.createElement(tag);
+  if(attrs)for(var k in attrs){
+    var v=attrs[k];
+    if(v==null||v===false)continue;
+    if(k==='class')e.className=v;
+    else if(k==='text')e.textContent=v;
+    else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v===true?'':v);
+  }
+  for(var i=2;i<arguments.length;i++){
+    var c=arguments[i];
+    if(c==null||c===false)continue;
+    if(Array.isArray(c)){c.forEach(function(x){if(x!=null&&x!==false)e.append(x.nodeType?x:document.createTextNode(x))});continue}
+    e.append(c.nodeType?c:document.createTextNode(c));
+  }
+  return e;
+}
+
+/* ---------- données ---------- */
+var KEY='journalMigraines.v1';
+var SIDES={L:'Gauche',R:'Droite',B:'Les deux'};
+var CLS_LABEL={triptan:'Triptan',ains:'Anti-inflammatoire','':'Autre'};
+var DEFAULT_SYMPTOMS=['Nausées','Vomissements','Raideur de la nuque','Troubles de la concentration','Troubles de la mémoire','Perte du mot juste','Mictions fréquentes','Troubles digestifs','Étourdissements','Phonophobie','Photophobie'];
+
+function defaults(){
+  return {v:1,
+    settings:{menses:true,theme:'auto',lastExport:null},
+    meds:[{id:'m1',name:'Triptan',cls:'triptan'},{id:'m2',name:'Anti-inflammatoire',cls:'ains'}],
+    symptoms:DEFAULT_SYMPTOMS.map(function(n,i){return {id:'s'+(i+1),name:n}}),
+    days:{}};
+}
+function blankEntry(){return {side:'',intensity:0,doses:{},prodrome:[],symptoms:[],notes:'',duration:null,menses:false}}
+
+function cleanList(arr,withCls){
+  var seen={},out=[];
+  arr.forEach(function(m){
+    if(!m||typeof m.name!=='string'||!m.name.trim())return;
+    var id=String(m.id||uid());
+    if(seen[id])id=uid();
+    seen[id]=1;
+    var o={id:id,name:m.name.trim().slice(0,60)};
+    if(withCls)o.cls=(m.cls==='triptan'||m.cls==='ains')?m.cls:'';
+    out.push(o);
+  });
+  return out;
+}
+/* normalise et répare des données quelconques */
+function normalize(raw){
+  var d=defaults();
+  if(!raw||typeof raw!=='object')return d;
+  var s=raw.settings||{};
+  d.settings.menses=s.menses!==false;
+  d.settings.theme=(s.theme==='light'||s.theme==='dark')?s.theme:'auto';
+  d.settings.lastExport=(typeof s.lastExport==='string'&&DATE_RE.test(s.lastExport))?s.lastExport:null;
+  if(Array.isArray(raw.meds))d.meds=cleanList(raw.meds,true);
+  if(Array.isArray(raw.symptoms))d.symptoms=cleanList(raw.symptoms,false);
+  var medIds={},symIds={};
+  d.meds.forEach(function(m){medIds[m.id]=1});
+  d.symptoms.forEach(function(m){symIds[m.id]=1});
+  var days=(raw.days&&typeof raw.days==='object')?raw.days:{};
+  Object.keys(days).forEach(function(k){
+    if(!DATE_RE.test(k))return;
+    var e=days[k];if(!e||typeof e!=='object')return;
+    var o=blankEntry();
+    o.side=(e.side==='L'||e.side==='R'||e.side==='B')?e.side:'';
+    var it=parseInt(e.intensity,10);o.intensity=(it>=1&&it<=5)?it:0;
+    if(e.doses&&typeof e.doses==='object')Object.keys(e.doses).forEach(function(id){
+      var n=parseInt(e.doses[id],10);
+      if(medIds[id]&&n>0)o.doses[id]=Math.min(4,n);
+    });
+    if(Array.isArray(e.prodrome))o.prodrome=e.prodrome.filter(function(x){return typeof x==='string'&&x.trim()}).map(function(x){return x.trim().slice(0,60)});
+    if(Array.isArray(e.symptoms))o.symptoms=e.symptoms.filter(function(id,i,a){return symIds[id]&&a.indexOf(id)===i});
+    o.notes=typeof e.notes==='string'?e.notes.slice(0,5000):'';
+    var du=parseFloat(e.duration);o.duration=(isFinite(du)&&du>0)?Math.min(168,du):null;
+    o.menses=e.menses===true;
+    if(!isEmpty(o))d.days[k]=o;
+  });
+  return d;
+}
+function doseTotal(e){var t=0;for(var id in e.doses)t+=e.doses[id];return t}
+function isCrisis(e){
+  return !!e&&!!(e.side||e.intensity>0||doseTotal(e)>0||e.prodrome.length||(e.notes&&e.notes.trim())||(e.duration!=null&&e.duration>0));
+}
+function isEmpty(e){return !isCrisis(e)&&!e.symptoms.length&&!e.menses}
+
+var S=null,pendingToast=null;
+function load(){
+  var raw=null;
+  try{raw=localStorage.getItem(KEY)}catch(e){}
+  if(!raw)return defaults();
+  try{return normalize(JSON.parse(raw))}
+  catch(e){
+    try{localStorage.setItem(KEY+'.illisible',raw)}catch(_){}
+    pendingToast='Données illisibles : copie conservée, journal réinitialisé';
+    return defaults();
+  }
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));return true}
+  catch(e){toast("Enregistrement impossible : stockage plein ou bloqué");return false}
+}
+function medById(id){for(var i=0;i<S.meds.length;i++)if(S.meds[i].id===id)return S.meds[i];return null}
+
+/* ---------- toast ---------- */
+var toastT=null;
+function toast(msg){
+  var t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show')},2600);
+}
+
+/* ---------- thème ---------- */
+var mq=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+function applyTheme(){
+  var t=S.settings.theme;
+  var dark=t==='dark'||(t==='auto'&&mq&&mq.matches);
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  $('#themeMeta').setAttribute('content',dark?'#12171E':'#F7F4EE');
+}
+if(mq){var onMq=function(){if(S&&S.settings.theme==='auto')applyTheme()};if(mq.addEventListener)mq.addEventListener('change',onMq);else if(mq.addListener)mq.addListener(onMq)}
+
+/* ---------- couches + bouton retour Android ---------- */
+var layerClose=null,ignorePop=0,dlgClose=null;
+function openLayer(fn){
+  layerClose=fn;
+  try{history.pushState({l:1},'')}catch(e){}
+}
+function closeLayerUI(){
+  if(!layerClose)return;
+  var f=layerClose;layerClose=null;f();
+  ignorePop++;
+  try{history.back()}catch(e){ignorePop--}
+}
+window.addEventListener('popstate',function(){
+  if(ignorePop>0){ignorePop--;return}
+  if(dlgClose){
+    var c=dlgClose;dlgClose=null;c();
+    if(layerClose){try{history.pushState({l:1},'')}catch(e){}}
+    return;
+  }
+  if(layerClose){var f=layerClose;layerClose=null;f()}
+});
+
+/* ---------- boîte de dialogue ---------- */
+function dialog(title,bodyNodes,actions){
+  var wrap=h('div',{class:'dlg',role:'alertdialog','aria-modal':'true'});
+  var close=function(){if(wrap.parentNode)wrap.remove();if(dlgClose===close)dlgClose=null};
+  var acts=h('div',{class:'acts'},actions.map(function(a){
+    return h('button',{type:'button',class:'btn '+(a.kind||''),onclick:function(){
+      var r=a.onClick?a.onClick():undefined;
+      if(r!==false)close();
+    }},a.label);
+  }));
+  wrap.append(h('div',{class:'box'},h('h2',{text:title}),bodyNodes,acts));
+  document.body.append(wrap);
+  dlgClose=close;
+  return close;
+}
+function confirmBox(title,text,okLabel,onOk){
+  dialog(title,h('p',{text:text}),[
+    {label:'Annuler'},
+    {label:okLabel,kind:'danger',onClick:onOk}
+  ]);
+}
+
+/* ---------- calendrier ---------- */
+var view={y:new Date().getFullYear(),m:new Date().getMonth()};
+
+function renderCalendar(){
+  var grid=$('#grid');grid.textContent='';
+  $('#monthLabel').textContent=cap(new Date(view.y,view.m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
+  var first=new Date(view.y,view.m,1);
+  var off=(first.getDay()+6)%7;
+  var nd=new Date(view.y,view.m+1,0).getDate();
+  var today=todayStr();
+  for(var i=0;i<off;i++)grid.append(h('div',{class:'ph','aria-hidden':'true'}));
+  for(var d=1;d<=nd;d++){
+    var key=view.y+'-'+pad(view.m+1)+'-'+pad(d);
+    grid.append(dayCell(key,d,today));
+  }
+  var leg=$('#legend');leg.textContent='';
+  leg.append(
+    h('span',null,h('i',{class:'l'}),'Gauche'),
+    h('span',null,h('i',{class:'r'}),'Droite'),
+    h('span',null,h('i',{class:'b'}),'Les deux'),
+    h('span',null,h('i',{class:'n'}),'Côté non précisé'),
+    S.settings.menses?h('span',null,h('i',{class:'m'}),'Règles'):null,
+    h('span',null,h('i',{class:'d'}),'Une prise'),
+    h('span',null,h('i',{class:'t'}),"Aujourd'hui")
+  );
+}
+function dayCell(key,d,today){
+  var e=S.days[key];
+  var crisis=isCrisis(e);
+  var tot=e?doseTotal(e):0;
+  var menses=!!(e&&e.menses&&S.settings.menses);
+  var label=parseD(key).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  var parts=[];
+  if(crisis)parts.push('crise'+(e.side?' côté '+SIDES[e.side].toLowerCase():''));
+  if(tot)parts.push(tot+(tot>1?' prises':' prise'));
+  if(menses)parts.push('règles');
+  var kids=[h('span',{class:'num',text:String(d)})];
+  if(crisis)kids.push(h('span',{class:'dot c-'+(e.side||'N')}));
+  if(tot){
+    var ds=h('span',{class:'dashes'});
+    for(var i=0;i<Math.min(tot,8);i++)ds.append(h('span',{class:'dash'}));
+    kids.push(ds);
+  }
+  if(menses)kids.push(h('span',{class:'mdot'}));
+  return h('button',{type:'button',class:'day'+(key===today?' today':''),'data-date':key,
+    'aria-label':label+(parts.length?' : '+parts.join(', '):''),onclick:function(){openSheet(key)}},kids);
+}
+
+/* ---------- statistiques du mois ---------- */
+function monthStats(y,m){
+  var prefix=y+'-'+pad(m+1)+'-';
+  var r={crisis:0,treat:0,total:0,menses:0,per:{},cls:{triptan:0,ains:0},sides:{L:0,R:0,B:0}};
+  Object.keys(S.days).forEach(function(k){
+    if(k.indexOf(prefix)!==0)return;
+    var e=S.days[k];
+    if(isCrisis(e)){r.crisis++;if(e.side)r.sides[e.side]++}
+    var t=doseTotal(e);
+    if(t>0){
+      r.treat++;r.total+=t;
+      var seen={};
+      Object.keys(e.doses).forEach(function(id){
+        r.per[id]=(r.per[id]||0)+e.doses[id];
+        var med=medById(id);
+        if(med&&med.cls&&!seen[med.cls]){seen[med.cls]=1;r.cls[med.cls]++}
+      });
+    }
+    if(e.menses)r.menses++;
+  });
+  return r;
+}
+function renderStats(){
+  var r=monthStats(view.y,view.m);
+  var c=$('#statsCard');c.textContent='';
+  var mois=new Date(view.y,view.m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  c.append(h('h2',{text:'Statistiques de '+mois}));
+  var alerts=[];
+  if(r.cls.triptan>10)alerts.push('Triptan pris '+r.cls.triptan+' jours ce mois-ci (plus de 10).');
+  if(r.cls.ains>15)alerts.push('Anti-inflammatoire pris '+r.cls.ains+' jours ce mois-ci (plus de 15).');
+  if(alerts.length)c.append(h('div',{class:'alert',role:'note'},alerts.map(function(a){return h('p',{text:a,style:'margin:0 0 4px'})}),
+    h('p',{style:'margin:0',text:"Il est conseillé d'en parler à un médecin : risque de céphalées par abus médicamenteux."})));
+  var dom='—';
+  var mx=Math.max(r.sides.L,r.sides.R,r.sides.B);
+  if(mx>0){
+    var best=['L','R','B'].filter(function(s){return r.sides[s]===mx});
+    dom=best.length>1?'Égalité':SIDES[best[0]];
+  }
+  var tiles=h('div',{class:'tiles'},
+    tile(r.crisis,'jours de crise'),
+    tile(r.treat,'jours avec traitement'),
+    tile(r.total,'prises au total'),
+    tile(dom,'côté dominant'+(mx>0&&dom!=='Égalité'?' ('+mx+' j)':'')));
+  if(S.settings.menses)tiles.append(tile(r.menses,'jours de règles'));
+  c.append(tiles);
+  var rows=h('div',{class:'rows'});
+  S.meds.forEach(function(m){
+    var n=r.per[m.id]||0;
+    rows.append(h('div',{class:'r'},h('span',{text:m.name}),h('b',{text:n+(n>1?' prises':' prise')})));
+  });
+  if(!S.meds.length)rows.append(h('p',{class:'muted small',text:'Aucun médicament configuré.'}));
+  c.append(h('h3',{text:'Détail par médicament'}),rows);
+}
+function tile(v,l){return h('div',{class:'tile'},h('b',{text:String(v)}),h('span',{text:l}))}
+
+/* ---------- lien avec les règles ---------- */
+function cycleInfo(){
+  var keys=Object.keys(S.days).filter(function(k){return S.days[k].menses}).sort();
+  var starts=[],prev=null;
+  keys.forEach(function(k){var n=dnum(k);if(prev===null||n-prev>10)starts.push(n);prev=n});
+  var today=dnum(todayStr());
+  var crisisAt=function(n){var e=S.days[dstr(n)];return !!e&&isCrisis(e)};
+  var o={starts:starts,n:starts.length,withMig:0,wHit:0,wTot:0,rHit:0,rTot:0,avg:null};
+  starts.forEach(function(s,i){
+    var any=false;
+    for(var n=s-2;n<=s+2;n++){
+      if(crisisAt(n))any=true;
+      if(n<=today){o.wTot++;if(crisisAt(n))o.wHit++}
+    }
+    if(any)o.withMig++;
+    var end=i+1<starts.length?starts[i+1]-3:today;
+    for(var q=s+3;q<=Math.min(end,today);q++){o.rTot++;if(crisisAt(q))o.rHit++}
+  });
+  if(starts.length>1){
+    var sum=0;for(var i=1;i<starts.length;i++)sum+=starts[i]-starts[i-1];
+    o.avg=sum/(starts.length-1);
+  }
+  return o;
+}
+function pct(a,b){return b?Math.round(100*a/b)+' %':'—'}
+function renderCycles(){
+  var c=$('#cycleCard');
+  if(!S.settings.menses){c.hidden=true;c.textContent='';return}
+  c.hidden=false;c.textContent='';
+  c.append(h('h2',{text:'Lien avec les règles'}));
+  var o=cycleInfo();
+  if(!o.n){
+    c.append(h('p',{class:'muted',text:'Aucun jour de règles noté pour le moment.'}),h('p',{class:'muted small',text:'Repère indicatif, pas un diagnostic.'}));
+    return;
+  }
+  c.append(h('div',{class:'tiles'},
+    tile(o.n,o.n>1?'cycles notés':'cycle noté'),
+    tile(o.avg==null?'—':(Math.round(o.avg*10)/10).toString().replace('.',',')+' j','durée moyenne du cycle'),
+    tile(o.withMig+' sur '+o.n,'cycles avec migraine entre J-2 et J+3'),
+    tile(pct(o.wHit,o.wTot)+' / '+pct(o.rHit,o.rTot),'jours de migraine : autour des règles / reste du cycle')));
+  c.append(h('p',{class:'muted small',text:'Autour des règles : '+o.wHit+(o.wHit>1?' jours':' jour')+' de migraine sur '+o.wTot+'. Reste du cycle : '+o.rHit+' sur '+o.rTot+'. Les jours sans fiche comptent comme sans migraine.'}));
+  var msg;
+  if(o.n<3)msg='Notez au moins trois cycles pour une comparaison fiable.';
+  else if(o.withMig/o.n>=2/3)msg='Au moins 2 cycles sur 3 avec une migraine entre J-2 et J+3 : schéma à montrer à un médecin.';
+  else msg='Pas de lien net pour l\'instant.';
+  c.append(h('div',{class:'verdict'},h('p',{style:'margin:0 0 4px',text:msg}),h('p',{class:'muted small',style:'margin:0',text:'Repère indicatif, pas un diagnostic.'})));
+  c.append(frise(o.starts));
+}
+function frise(starts){
+  var wrap=h('div',{class:'frise','aria-label':'Frise des 6 derniers cycles'});
+  var today=dnum(todayStr());
+  var labels={'-7':'-7','-2':'-2','0':'J1','2':'3','7':'8','12':'13'};
+  var head=h('div',{class:'fr-row fr-head','aria-hidden':'true'},h('span',{class:'fr-lab',text:'J'}));
+  for(var o=-7;o<=12;o++)head.append(h('span',{class:'fr-c',text:labels[o]!==undefined?labels[o]:''}));
+  wrap.append(head);
+  starts.slice(-6).reverse().forEach(function(s){
+    var row=h('div',{class:'fr-row'},h('span',{class:'fr-lab',text:dstr(s).slice(8)+'/'+dstr(s).slice(5,7)}));
+    for(var o=-7;o<=12;o++){
+      var n=s+o,e=S.days[dstr(n)];
+      var cls='fr-c';
+      if(o>=-2&&o<=2)cls+=' zone';
+      if(e&&e.menses)cls+=' m';
+      if(e&&isCrisis(e))cls+=' mig';
+      if(n>today)cls+=' fut';
+      row.append(h('span',{class:cls}));
+    }
+    wrap.append(row);
+  });
+  wrap.append(h('div',{class:'legend'},
+    h('span',null,h('i',{class:'m'}),'Règles'),
+    h('span',null,'● migraine'),
+    h('span',null,'Cadre vert : J-2 à J+3'),
+    h('span',null,'Estompé : à venir')));
+  return wrap;
+}
+
+function renderAll(){renderCalendar();renderStats();renderCycles()}
+
+/* ---------- fiche du jour ---------- */
+var sh=null;
+function section(title){
+  var kids=Array.prototype.slice.call(arguments,1);
+  return h('section',{class:'sec'},h('h3',{text:title}),kids);
+}
+function openSheet(key){
+  var e=S.days[key];
+  sh={key:key,exists:!!e,draft:e?clone(e):blankEntry(),hadMenses:!!(e&&e.menses),span:1,pending:''};
+  renderSheet();
+  $('#sheetLayer').classList.add('open');
+  document.body.classList.add('lock');
+  $('#shBody').scrollTop=0;
+  openLayer(hideSheet);
+}
+function hideSheet(){
+  $('#sheetLayer').classList.remove('open');
+  if(!$('#settings').classList.contains('open'))document.body.classList.remove('lock');
+  sh=null;
+}
+function renderSheet(focusPending){
+  var d=sh.draft,body=$('#shBody'),st=body.scrollTop;
+  body.textContent='';
+  $('#shTitle').textContent=fmtLong(sh.key);
+  $('#shDel').disabled=!sh.exists;
+
+  body.append(section('Côté de la tête',
+    h('div',{class:'seg'},['L','R','B'].map(function(c){
+      return h('button',{type:'button','data-c':c,'aria-pressed':String(d.side===c),onclick:function(){d.side=d.side===c?'':c;renderSheet()}},SIDES[c]);
+    }))));
+
+  body.append(section('Intensité',
+    h('div',{class:'seg int'},[1,2,3,4,5].map(function(n){
+      return h('button',{type:'button','aria-label':'Intensité '+n,'aria-pressed':String(d.intensity===n),onclick:function(){d.intensity=d.intensity===n?0:n;renderSheet()}},String(n));
+    })),
+    h('p',{class:'hint',text:'1 = légère, 5 = très forte'})));
+
+  var dur=h('input',{type:'text',inputmode:'decimal',autocomplete:'off',placeholder:'0','aria-label':'Durée en heures',
+    value:d.duration==null?'':String(d.duration).replace('.',','),
+    oninput:function(ev){
+      var v=ev.target.value.replace(',','.').replace(/[^0-9.]/g,'');
+      var n=parseFloat(v);
+      d.duration=(isFinite(n)&&n>0)?Math.min(168,n):null;
+    }});
+  body.append(section('Durée',h('div',{class:'dur'},dur,h('span',{text:'heures'}))));
+
+  var meds=h('div');
+  S.meds.forEach(function(m){
+    var n=d.doses[m.id]||0;
+    var set=function(v){if(v<=0)delete d.doses[m.id];else d.doses[m.id]=v;renderSheet()};
+    meds.append(h('div',{class:'dose'},
+      h('span',{class:'nm',text:m.name}),
+      h('div',{class:'step'},
+        h('button',{type:'button','aria-label':'Retirer une prise de '+m.name,disabled:n<=0,onclick:function(){set(n-1)}},'−'),
+        h('output',{text:String(n),'aria-label':n+' prises'}),
+        h('button',{type:'button','aria-label':'Ajouter une prise de '+m.name,disabled:n>=4,onclick:function(){set(n+1)}},'+'))));
+  });
+  if(!S.meds.length)meds.append(h('p',{class:'muted',text:'Aucun médicament : ajoutez-en dans les réglages.'}));
+  body.append(section('Traitement (0 à 4 prises)',meds));
+
+  if(S.settings.menses){
+    var sw=h('button',{type:'button',class:'row-switch',role:'switch','aria-checked':String(d.menses),onclick:function(){d.menses=!d.menses;sh.span=1;renderSheet()}},
+      h('span',{text:'Règles'}),h('span',{class:'sw'}));
+    var kids=[sw];
+    if(d.menses&&!sh.hadMenses){
+      kids.push(h('div',{style:'margin-top:10px'},
+        h('p',{style:'font-weight:600;margin:0 0 6px',text:'Sur combien de jours ?'}),
+        h('div',{class:'seg span'},[1,2,3,4,5,6,7].map(function(n){
+          return h('button',{type:'button','aria-pressed':String(sh.span===n),onclick:function(){sh.span=n;renderSheet()}},String(n));
+        })),
+        h('p',{class:'hint',text:'Ce jour compris. Les jours suivants sont marqués sans dépasser aujourd\'hui.'})));
+    }
+    body.append(section.apply(null,['Règles'].concat(kids)));
+  }
+
+  var pr=h('div',{class:'chips'},d.prodrome.map(function(p,i){
+    return h('button',{type:'button',class:'chip rm','aria-label':'Retirer '+p,onclick:function(){d.prodrome.splice(i,1);renderSheet()}},p);
+  }));
+  var pin=h('input',{type:'text',id:'prodIn',placeholder:'ex. fatigue, bâillements',autocomplete:'off',maxlength:'60','aria-label':'Nouveau prodrome',value:sh.pending,
+    oninput:function(ev){sh.pending=ev.target.value},
+    onkeydown:function(ev){if(ev.key==='Enter'){ev.preventDefault();addProdrome()}}});
+  body.append(section('Prodrome',pr,h('div',{class:'addrow'},pin,h('button',{type:'button',class:'btn',onclick:addProdrome},'Ajouter'))));
+
+  var sy=h('div',{class:'chips'},S.symptoms.map(function(s){
+    var on=d.symptoms.indexOf(s.id)>=0;
+    return h('button',{type:'button',class:'chip','aria-pressed':String(on),onclick:function(){
+      var i=d.symptoms.indexOf(s.id);if(i>=0)d.symptoms.splice(i,1);else d.symptoms.push(s.id);renderSheet();
+    }},s.name);
+  }));
+  if(!S.symptoms.length)sy.append(h('p',{class:'muted',text:'Aucun symptôme configuré (Réglages).'}));
+  body.append(section('Symptômes associés',sy));
+
+  body.append(section('Notes',h('textarea',{rows:'3',placeholder:'Déclencheur, contexte…','aria-label':'Notes',oninput:function(ev){d.notes=ev.target.value},text:d.notes})));
+  body.scrollTop=st;
+  if(focusPending){var p=$('#prodIn');if(p)p.focus()}
+}
+function addProdrome(){
+  var v=(sh.pending||'').trim();
+  if(!v)return;
+  var low=v.toLowerCase();
+  if(!sh.draft.prodrome.some(function(x){return x.toLowerCase()===low}))sh.draft.prodrome.push(v.slice(0,60));
+  sh.pending='';
+  renderSheet(true);
+}
+function saveSheet(){
+  var d=sh.draft,key=sh.key;
+  if(sh.pending&&sh.pending.trim()){
+    var v=sh.pending.trim(),low=v.toLowerCase();
+    if(!d.prodrome.some(function(x){return x.toLowerCase()===low}))d.prodrome.push(v.slice(0,60));
+  }
+  d.notes=(d.notes||'').trim();
+  if(isEmpty(d))delete S.days[key];else S.days[key]=d;
+  var added=0;
+  if(d.menses&&!sh.hadMenses&&sh.span>1){
+    var t=todayStr();
+    for(var i=1;i<sh.span;i++){
+      var k=addDays(key,i);
+      if(k>t)break;
+      if(!S.days[k])S.days[k]=blankEntry();
+      if(!S.days[k].menses){S.days[k].menses=true;added++}
+    }
+  }
+  if(save()){toast(added?'Enregistré, '+added+(added>1?' jours de règles ajoutés':' jour de règles ajouté'):'Enregistré')}
+  closeLayerUI();
+  renderAll();
+}
+$('#shSave').addEventListener('click',saveSheet);
+$('#shCancel').addEventListener('click',closeLayerUI);
+$('#shClose').addEventListener('click',closeLayerUI);
+$('#shScrim').addEventListener('click',closeLayerUI);
+$('#shDel').addEventListener('click',function(){
+  if(!sh||!sh.exists)return;
+  confirmBox('Supprimer cette fiche ?','Les informations de ce jour seront effacées.','Supprimer',function(){
+    delete S.days[sh.key];save();closeLayerUI();renderAll();toast('Fiche supprimée');
+  });
+});
+
+/* ---------- navigation du calendrier ---------- */
+function shiftMonth(n){var d=new Date(view.y,view.m+n,1);view.y=d.getFullYear();view.m=d.getMonth();renderAll()}
+$('#btnPrev').addEventListener('click',function(){shiftMonth(-1)});
+$('#btnNext').addEventListener('click',function(){shiftMonth(1)});
+$('#btnToday').addEventListener('click',function(){var n=new Date();view.y=n.getFullYear();view.m=n.getMonth();renderAll()});
+
+/* ---------- réglages ---------- */
+function openSettings(){
+  renderSettings();
+  $('#settings').classList.add('open');
+  document.body.classList.add('lock');
+  $('#settings').scrollTop=0;
+  openLayer(function(){$('#settings').classList.remove('open');document.body.classList.remove('lock');renderAll()});
+}
+$('#btnSettings').addEventListener('click',openSettings);
+$('#stBack').addEventListener('click',closeLayerUI);
+
+function cardSec(title){
+  return h('section',{class:'card'},h('h2',{text:title}),Array.prototype.slice.call(arguments,1));
+}
+function renderSettings(){
+  var b=$('#stBody'),st=$('#settings').scrollTop;
+  b.textContent='';
+
+  b.append(cardSec('Suivi des règles',
+    h('button',{type:'button',class:'row-switch',role:'switch','aria-checked':String(S.settings.menses),onclick:function(){
+      S.settings.menses=!S.settings.menses;save();renderSettings();
+    }},h('span',{text:'Activer le suivi des règles'}),h('span',{class:'sw'})),
+    h('p',{class:'hint',text:'Désactivé, les règles disparaissent de la fiche, du calendrier et des statistiques. Les données déjà notées sont conservées.'})));
+
+  var ml=h('div');
+  S.meds.forEach(function(m){
+    ml.append(h('button',{type:'button',class:'list-row',onclick:function(){editItem('med',m)}},
+      h('span',null,m.name,' ',h('small',{text:m.cls?'('+CLS_LABEL[m.cls]+')':''})),h('span',{class:'lnk',text:'Modifier'})));
+  });
+  if(!S.meds.length)ml.append(h('p',{class:'muted',text:'Aucun médicament.'}));
+  b.append(cardSec('Médicaments',ml,
+    h('button',{type:'button',class:'btn block',style:'margin-top:10px',onclick:function(){editItem('med',null)}},'+ Ajouter un médicament'),
+    h('p',{class:'hint',text:'Indiquez le dosage dans le nom (ex. Epitomax 50 mg). Le type « Triptan » ou « Anti-inflammatoire » sert à l\'alerte mensuelle.'})));
+
+  var sl=h('div');
+  S.symptoms.forEach(function(s){
+    sl.append(h('button',{type:'button',class:'list-row',onclick:function(){editItem('sym',s)}},
+      h('span',{text:s.name}),h('span',{class:'lnk',text:'Modifier'})));
+  });
+  b.append(cardSec('Symptômes associés',sl,
+    h('button',{type:'button',class:'btn block',style:'margin-top:10px',onclick:function(){editItem('sym',null)}},'+ Ajouter un symptôme')));
+
+  b.append(cardSec('Thème',h('div',{class:'seg'},[['auto','Automatique'],['light','Clair'],['dark','Sombre']].map(function(t){
+    return h('button',{type:'button','aria-pressed':String(S.settings.theme===t[0]),style:'font-size:15px',onclick:function(){
+      S.settings.theme=t[0];save();applyTheme();renderSettings();
+    }},t[1]);
+  }))));
+
+  var last=S.settings.lastExport?'Dernière sauvegarde : '+fmtShort(S.settings.lastExport)+'.':'Aucune sauvegarde exportée pour l\'instant.';
+  b.append(cardSec('Données et vie privée',
+    h('p',{text:'Vos données restent uniquement sur cet appareil (stockage local du navigateur). Aucun compte, aucun serveur, rien n\'est envoyé.'}),
+    h('p',{class:'alert',text:'Exportez régulièrement une sauvegarde : si le navigateur est réinitialisé ou si l\'application est désinstallée, les données locales sont perdues. '+last}),
+    h('button',{type:'button',class:'btn block',onclick:exportCSV},'Exporter en CSV'),
+    h('button',{type:'button',class:'btn block',onclick:exportJSON},'Sauvegarde complète (JSON)'),
+    h('button',{type:'button',class:'btn block',onclick:function(){$('#fileIn').click()}},'Restaurer ou réparer depuis une sauvegarde'),
+    h('p',{class:'hint',text:'Le partage passe par la feuille de partage Android ; à défaut, le fichier est téléchargé.'})));
+  b.append(h('p',{class:'foot',text:'Outil de suivi personnel, ne remplace pas un avis médical'}));
+  $('#settings').scrollTop=st;
+}
+
+function editItem(type,item){
+  var isMed=type==='med';
+  var nm=h('input',{type:'text',maxlength:'60',autocomplete:'off',value:item?item.name:'',placeholder:isMed?'ex. Epitomax 50 mg':'ex. Fourmillements','aria-label':'Nom'});
+  var sel=null,body=[h('label',{text:'Nom'}),nm];
+  if(isMed){
+    sel=h('select',{'aria-label':'Type'},
+      h('option',{value:'',text:'Autre'}),
+      h('option',{value:'triptan',text:'Triptan'}),
+      h('option',{value:'ains',text:'Anti-inflammatoire'}));
+    sel.value=item?item.cls:'';
+    body.push(h('label',{text:'Type (pour l\'alerte mensuelle)'}),sel);
+  }
+  var acts=[{label:'Annuler'}];
+  if(item)acts.unshift({label:'Supprimer',kind:'danger',onClick:function(){
+    setTimeout(function(){
+      confirmBox('Supprimer « '+item.name+' » ?',isMed?'Les prises enregistrées de ce médicament seront aussi retirées du journal.':'Ce symptôme sera aussi retiré des jours où il est noté.','Supprimer',function(){deleteItem(type,item.id)});
+    },0);
+  }});
+  acts.push({label:'Enregistrer',kind:'primary',onClick:function(){
+    var v=nm.value.trim();
+    if(!v){nm.focus();return false}
+    if(item){item.name=v.slice(0,60);if(isMed)item.cls=sel.value}
+    else{
+      var o={id:uid(),name:v.slice(0,60)};
+      if(isMed)o.cls=sel.value;
+      (isMed?S.meds:S.symptoms).push(o);
+    }
+    save();renderSettings();
+  }});
+  dialog(item?(isMed?'Modifier le médicament':'Modifier le symptôme'):(isMed?'Nouveau médicament':'Nouveau symptôme'),body,acts);
+}
+function deleteItem(type,id){
+  if(type==='med'){
+    S.meds=S.meds.filter(function(m){return m.id!==id});
+    Object.keys(S.days).forEach(function(k){delete S.days[k].doses[id]});
+  }else{
+    S.symptoms=S.symptoms.filter(function(m){return m.id!==id});
+    Object.keys(S.days).forEach(function(k){S.days[k].symptoms=S.days[k].symptoms.filter(function(x){return x!==id})});
+  }
+  Object.keys(S.days).forEach(function(k){if(isEmpty(S.days[k]))delete S.days[k]});
+  save();renderSettings();toast('Supprimé');
+}
+
+/* ---------- export / import ---------- */
+function csvCell(v,text){
+  v=v==null?'':String(v);
+  if(text&&/^[=+\-@\t\r]/.test(v))v="'"+v;
+  return /[;"\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+}
+function buildCSV(){
+  var cols=['Date','Règles','Côté','Intensité'].concat(S.meds.map(function(m){return m.name}),['Prodrome','Symptômes associés','Durée (h)','Notes']);
+  var lines=[cols.map(function(c){return csvCell(c,true)}).join(';')];
+  var symName={};S.symptoms.forEach(function(s){symName[s.id]=s.name});
+  Object.keys(S.days).sort().forEach(function(k){
+    var e=S.days[k];
+    var row=[k,e.menses?'oui':'',e.side?SIDES[e.side]:'',e.intensity||''];
+    S.meds.forEach(function(m){row.push(e.doses[m.id]||'')});
+    row.push(e.prodrome.join(' | '),e.symptoms.map(function(id){return symName[id]}).filter(Boolean).join(' | '),
+      e.duration!=null?String(e.duration).replace('.',','):'',e.notes||'');
+    lines.push(row.map(function(c,i){return csvCell(c,i===0||i>=4+S.meds.length&&i!==4+S.meds.length+2)}).join(';'));
+  });
+  return '﻿'+lines.join('\r\n')+'\r\n';
+}
+function deliver(name,mime,text){
+  var blob=new Blob([text],{type:mime});
+  var done=function(how){
+    S.settings.lastExport=todayStr();save();
+    toast(how==='share'?'Fichier partagé':'Fichier téléchargé');
+    if($('#settings').classList.contains('open'))renderSettings();
+  };
+  var download=function(){
+    var url=URL.createObjectURL(blob);
+    var a=h('a',{href:url,download:name});
+    document.body.append(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(url);a.remove()},4000);
+    done('download');
+  };
+  try{
+    var file=new File([blob],name,{type:mime});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:'Journal des migraines'}).then(function(){done('share')},function(err){
+        if(err&&err.name==='AbortError')return;
+        download();
+      });
+      return;
+    }
+  }catch(e){}
+  download();
+}
+function exportCSV(){deliver('journal-migraines-'+todayStr()+'.csv','text/csv',buildCSV())}
+function exportJSON(){deliver('journal-migraines-sauvegarde-'+todayStr()+'.json','application/json',JSON.stringify(S,null,1))}
+
+$('#fileIn').addEventListener('change',function(ev){
+  var f=ev.target.files&&ev.target.files[0];
+  ev.target.value='';
+  if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var parsed;
+    try{parsed=JSON.parse(String(rd.result).replace(/^﻿/,''))}catch(e){toast('Fichier illisible : ce n\'est pas une sauvegarde JSON');return}
+    if(!parsed||typeof parsed!=='object'||(!parsed.days&&!parsed.meds)){toast('Ce fichier ne ressemble pas à une sauvegarde du journal');return}
+    var n=normalize(parsed);
+    var count=Object.keys(n.days).length;
+    confirmBox('Restaurer cette sauvegarde ?',count+(count>1?' jours notés':' jour noté')+' seront chargés et remplaceront les données actuelles. Une copie des données actuelles est gardée sur l\'appareil.','Restaurer',function(){
+      try{localStorage.setItem(KEY+'.avantRestauration',JSON.stringify(S))}catch(e){}
+      S=n;save();applyTheme();renderAll();renderSettings();toast('Sauvegarde restaurée');
+    });
+  };
+  rd.onerror=function(){toast('Lecture du fichier impossible')};
+  rd.readAsText(f);
+});
+
+/* ---------- icône et manifeste générés au chargement ---------- */
+function makeIcon(size){
+  var c=document.createElement('canvas');c.width=c.height=size;
+  var x=c.getContext('2d'),k=size/180;
+  x.fillStyle='#2D3D52';x.fillRect(0,0,size,size);
+  x.fillStyle='#BECFBB';x.beginPath();x.arc(90*k,90*k,52*k,0,Math.PI*2);x.fill();
+  x.fillStyle='#2D3D52';x.beginPath();x.arc(112*k,76*k,44*k,0,Math.PI*2);x.fill();
+  x.fillStyle='#8EA48B';x.beginPath();x.arc(70*k,112*k,9*k,0,Math.PI*2);x.fill();
+  return c.toDataURL('image/png');
+}
+function setupInstall(){
+  try{
+    $('#touchIcon').setAttribute('href',makeIcon(180));
+    var man={name:'Journal des migraines',short_name:'Migraines',lang:'fr',dir:'ltr',
+      start_url:location.href.split('#')[0],display:'standalone',orientation:'portrait',
+      background_color:'#F7F4EE',theme_color:'#2D3D52',
+      icons:[{src:makeIcon(192),sizes:'192x192',type:'image/png',purpose:'any'},
+             {src:makeIcon(512),sizes:'512x512',type:'image/png',purpose:'any'}]};
+    var url=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/manifest+json'}));
+    document.head.append(h('link',{rel:'manifest',href:url}));
+    var ic=h('link',{rel:'icon',type:'image/png',href:makeIcon(192)});
+    document.head.append(ic);
+  }catch(e){}
+}
+
+/* ---------- démarrage ---------- */
+S=load();
+applyTheme();
+renderAll();
+setupInstall();
+if(pendingToast)toast(pendingToast);
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+// recharge l'affichage au retour dans l'application (changement de jour)
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&!sh)renderAll()});
+// accès aux fonctions pour les tests
+window.__journal={get S(){return S},normalize:normalize,buildCSV:buildCSV,cycleInfo:cycleInfo};
+})();
+</script>
+</body>
+</html>
