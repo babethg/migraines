@@ -116,12 +116,17 @@ p{margin:0 0 8px}
 .seg button[data-c="L"][aria-pressed="true"]{background:var(--left);border-color:var(--left);color:#fff}
 .seg button[data-c="R"][aria-pressed="true"]{background:var(--right);border-color:var(--right);color:#fff}
 .seg button[data-c="B"][aria-pressed="true"]{background:var(--both);border-color:var(--both);color:#fff}
-.seg.int button{font-size:22px}
+.seg.int{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.seg.int button{font-size:20px;min-height:52px}
 .seg.span{gap:2px}
 .seg.span button{min-width:0;min-height:48px;font-size:17px;border-radius:10px}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
 .dose{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border-radius:14px;padding:6px 6px 6px 14px;margin-bottom:8px;min-height:60px}
 .dose .nm{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+.dose{flex-wrap:wrap}
+.tm{width:100%;display:flex;gap:8px;padding:0 8px 8px 0}
+.tm button{flex:1;min-height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);font-size:14px}
+.tm button[aria-pressed="true"]{background:var(--sage-soft);color:var(--on-sage);border-color:var(--sage);font-weight:700}
 .step{display:flex;align-items:center;gap:4px}
 .step button{width:52px;height:48px;border-radius:12px;background:var(--surface2);font-size:26px;font-weight:700;line-height:1}
 .step output{width:30px;text-align:center;font-size:22px;font-weight:700}
@@ -257,17 +262,19 @@ function h(tag,attrs){
 /* ---------- données ---------- */
 var KEY='journalMigraines.v1';
 var SIDES={L:'Gauche',R:'Droite',B:'Les deux'};
-var CLS_LABEL={triptan:'Triptan',ains:'Anti-inflammatoire','':'Autre'};
-var DEFAULT_SYMPTOMS=['Nausées','Vomissements','Raideur de la nuque','Troubles de la concentration','Troubles de la mémoire','Perte du mot juste','Mictions fréquentes','Troubles digestifs','Étourdissements','Phonophobie','Photophobie'];
+var CLS_LABEL={triptan:'Triptan',ains:'Anti-inflammatoire',opio:'Opioïde ou antalgique combiné','':'Autre'};
+var DEFAULT_SYMPTOMS=['Nausées','Vomissements','Raideur de la nuque','Troubles de la concentration','Troubles de la mémoire','Perte du mot juste','Mictions fréquentes','Troubles digestifs','Étourdissements','Phonophobie','Photophobie','Brouillard mental'];
+var DEFAULT_MEDS=[['Imigrane 20','triptan'],['Maxalt','triptan'],['Sumatriptan Sun 6 mg','triptan'],['Kétoprofène IV','ains'],['Acupan',''],['Lamaline','opio'],['Imodium',''],['Motilium','']];
 
 function defaults(){
-  return {v:1,
+  return {v:2,
     settings:{menses:true,theme:'auto',lastExport:null},
-    meds:[{id:'m1',name:'Triptan',cls:'triptan'},{id:'m2',name:'Anti-inflammatoire',cls:'ains'}],
+    meds:DEFAULT_MEDS.map(function(m,i){return {id:'c'+(i+1),name:m[0],cls:m[1]}}),
+    fondHist:[{from:'2026-01-27',items:[{id:'f1',name:'Epitomax 150 mg / jour'},{id:'f2',name:'Candésartan 16 mg / jour'}]}],
     symptoms:DEFAULT_SYMPTOMS.map(function(n,i){return {id:'s'+(i+1),name:n}}),
     days:{}};
 }
-function blankEntry(){return {side:'',intensity:0,doses:{},prodrome:[],symptoms:[],notes:'',duration:null,menses:false}}
+function blankEntry(){return {side:'',intensity:0,doses:{},prodrome:[],symptoms:[],notes:'',duration:null,menses:false,fondSkip:[],timing:{}}}
 
 function cleanList(arr,withCls){
   var seen={},out=[];
@@ -277,39 +284,71 @@ function cleanList(arr,withCls){
     if(seen[id])id=uid();
     seen[id]=1;
     var o={id:id,name:m.name.trim().slice(0,60)};
-    if(withCls)o.cls=(m.cls==='triptan'||m.cls==='ains')?m.cls:'';
+    if(withCls)o.cls=(m.cls==='triptan'||m.cls==='ains'||m.cls==='opio')?m.cls:'';
     out.push(o);
   });
   return out;
 }
-/* normalise et répare des données quelconques */
+/* normalise et répare des données quelconques (et migre les anciennes versions) */
 function normalize(raw){
   var d=defaults();
   if(!raw||typeof raw!=='object')return d;
+  var ver=parseInt(raw.v,10)||1;
   var s=raw.settings||{};
   d.settings.menses=s.menses!==false;
   d.settings.theme=(s.theme==='light'||s.theme==='dark')?s.theme:'auto';
   d.settings.lastExport=(typeof s.lastExport==='string'&&DATE_RE.test(s.lastExport))?s.lastExport:null;
-  if(Array.isArray(raw.meds))d.meds=cleanList(raw.meds,true);
-  if(Array.isArray(raw.symptoms))d.symptoms=cleanList(raw.symptoms,false);
-  var medIds={},symIds={};
+  var rawDays=(raw.days&&typeof raw.days==='object')?raw.days:{};
+  if(Array.isArray(raw.meds)){
+    var old=cleanList(raw.meds,true);
+    if(ver<2){
+      var used={};
+      Object.keys(rawDays).forEach(function(k){var e=rawDays[k];if(e&&e.doses&&typeof e.doses==='object')Object.keys(e.doses).forEach(function(id){used[id]=1})});
+      var low=function(x){return x.trim().toLowerCase()};
+      var generic={'triptan':1,'anti-inflammatoire':1};
+      var base=d.meds;
+      var keep=old.filter(function(m){
+        if(used[m.id])return true;
+        return !generic[low(m.name)]&&!base.some(function(b){return low(b.name)===low(m.name)});
+      });
+      d.meds=base.concat(keep);
+    }else d.meds=old;
+  }
+  if(Array.isArray(raw.symptoms)){
+    d.symptoms=cleanList(raw.symptoms,false);
+    if(ver<2&&!d.symptoms.some(function(x){return x.name.toLowerCase()==='brouillard mental'}))d.symptoms.push({id:uid(),name:'Brouillard mental'});
+  }
+  if(Array.isArray(raw.fondHist)){
+    var seenF={};
+    d.fondHist=raw.fondHist
+      .filter(function(v){return v&&typeof v.from==='string'&&DATE_RE.test(v.from)&&Array.isArray(v.items)})
+      .map(function(v){return {from:v.from,items:cleanList(v.items,false)}})
+      .sort(function(a,b){return a.from<b.from?-1:a.from>b.from?1:0})
+      .filter(function(v){if(seenF[v.from])return false;seenF[v.from]=1;return true});
+  }
+  var medIds={},symIds={},fondIds={};
   d.meds.forEach(function(m){medIds[m.id]=1});
   d.symptoms.forEach(function(m){symIds[m.id]=1});
-  var days=(raw.days&&typeof raw.days==='object')?raw.days:{};
-  Object.keys(days).forEach(function(k){
+  d.fondHist.forEach(function(v){v.items.forEach(function(i){fondIds[i.id]=1})});
+  Object.keys(rawDays).forEach(function(k){
     if(!DATE_RE.test(k))return;
-    var e=days[k];if(!e||typeof e!=='object')return;
+    var e=rawDays[k];if(!e||typeof e!=='object')return;
     var o=blankEntry();
     o.side=(e.side==='L'||e.side==='R'||e.side==='B')?e.side:'';
-    var it=parseInt(e.intensity,10);o.intensity=(it>=1&&it<=5)?it:0;
+    var it=parseInt(e.intensity,10);if(ver<2)it*=2;
+    o.intensity=(it>=1&&it<=10)?it:0;
     if(e.doses&&typeof e.doses==='object')Object.keys(e.doses).forEach(function(id){
       var n=parseInt(e.doses[id],10);
       if(medIds[id]&&n>0)o.doses[id]=Math.min(4,n);
     });
+    if(e.timing&&typeof e.timing==='object')Object.keys(e.timing).forEach(function(id){
+      if(o.doses[id]&&(e.timing[id]==='early'||e.timing[id]==='late'))o.timing[id]=e.timing[id];
+    });
     if(Array.isArray(e.prodrome))o.prodrome=e.prodrome.filter(function(x){return typeof x==='string'&&x.trim()}).map(function(x){return x.trim().slice(0,60)});
     if(Array.isArray(e.symptoms))o.symptoms=e.symptoms.filter(function(id,i,a){return symIds[id]&&a.indexOf(id)===i});
+    if(Array.isArray(e.fondSkip))o.fondSkip=e.fondSkip.filter(function(id,i,a){return fondIds[id]&&a.indexOf(id)===i});
     o.notes=typeof e.notes==='string'?e.notes.slice(0,5000):'';
-    var du=parseFloat(e.duration);o.duration=(isFinite(du)&&du>0)?Math.min(168,du):null;
+    var du=parseFloat(e.duration);o.duration=(isFinite(du)&&du>0)?Math.min(24,du):null;
     o.menses=e.menses===true;
     if(!isEmpty(o))d.days[k]=o;
   });
@@ -319,7 +358,7 @@ function doseTotal(e){var t=0;for(var id in e.doses)t+=e.doses[id];return t}
 function isCrisis(e){
   return !!e&&!!(e.side||e.intensity>0||doseTotal(e)>0||e.prodrome.length||(e.notes&&e.notes.trim())||(e.duration!=null&&e.duration>0));
 }
-function isEmpty(e){return !isCrisis(e)&&!e.symptoms.length&&!e.menses}
+function isEmpty(e){return !isCrisis(e)&&!e.symptoms.length&&!e.menses&&!e.fondSkip.length}
 
 var S=null,pendingToast=null;
 function load(){
@@ -337,6 +376,7 @@ function save(){
   try{localStorage.setItem(KEY,JSON.stringify(S));return true}
   catch(e){toast("Enregistrement impossible : stockage plein ou bloqué");return false}
 }
+function fondItemsFor(key){var r=null;S.fondHist.forEach(function(v){if(v.from<=key)r=v});return r?r.items:[]}
 function medById(id){for(var i=0;i<S.meds.length;i++)if(S.meds[i].id===id)return S.meds[i];return null}
 
 /* ---------- toast ---------- */
@@ -451,7 +491,7 @@ function dayCell(key,d,today){
 /* ---------- statistiques du mois ---------- */
 function monthStats(y,m){
   var prefix=y+'-'+pad(m+1)+'-';
-  var r={crisis:0,treat:0,total:0,menses:0,per:{},cls:{triptan:0,ains:0},sides:{L:0,R:0,B:0}};
+  var r={crisis:0,treat:0,total:0,menses:0,hours:0,skip:0,tim:{early:0,late:0},tper:{},per:{},cls:{triptan:0,ains:0,opio:0},sides:{L:0,R:0,B:0}};
   Object.keys(S.days).forEach(function(k){
     if(k.indexOf(prefix)!==0)return;
     var e=S.days[k];
@@ -467,17 +507,38 @@ function monthStats(y,m){
       });
     }
     if(e.menses)r.menses++;
+    if(e.duration)r.hours+=e.duration;
+    Object.keys(e.timing).forEach(function(id){var t=e.timing[id];r.tim[t]++;(r.tper[id]=r.tper[id]||{early:0,late:0})[t]++});
+    if(e.fondSkip.length&&fondItemsFor(k).length)r.skip++;
   });
   return r;
 }
+function episodes(){
+  var keys=Object.keys(S.days).filter(function(k){return isCrisis(S.days[k])}).sort();
+  var eps=[],cur=null;
+  keys.forEach(function(k){
+    var n=dnum(k);
+    if(cur&&n===cur.endN+1){cur.endN=n;cur.days.push(k)}
+    else{cur={startN:n,endN:n,days:[k],hours:0,missing:false,peak:0};eps.push(cur)}
+  });
+  eps.forEach(function(ep){ep.days.forEach(function(k){
+    var e=S.days[k];
+    if(e.duration)ep.hours+=e.duration;else ep.missing=true;
+    if(e.intensity>ep.peak)ep.peak=e.intensity;
+  })});
+  return eps;
+}
+function fmtH(n){return (Math.round(n*10)/10).toString().replace('.',',')+' h'}
+function ddmm(n){var t=dstr(n);return t.slice(8)+'/'+t.slice(5,7)}
 function renderStats(){
   var r=monthStats(view.y,view.m);
   var c=$('#statsCard');c.textContent='';
   var mois=new Date(view.y,view.m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   c.append(h('h2',{text:'Statistiques de '+mois}));
   var alerts=[];
-  if(r.cls.triptan>10)alerts.push('Triptan pris '+r.cls.triptan+' jours ce mois-ci (plus de 10).');
-  if(r.cls.ains>15)alerts.push('Anti-inflammatoire pris '+r.cls.ains+' jours ce mois-ci (plus de 15).');
+  [['triptan',10],['opio',10],['ains',15]].forEach(function(a){
+    if(r.cls[a[0]]>a[1])alerts.push(CLS_LABEL[a[0]]+' : '+r.cls[a[0]]+' jours de prise ce mois-ci (plus de '+a[1]+').');
+  });
   if(alerts.length)c.append(h('div',{class:'alert',role:'note'},alerts.map(function(a){return h('p',{text:a,style:'margin:0 0 4px'})}),
     h('p',{style:'margin:0',text:"Il est conseillé d'en parler à un médecin : risque de céphalées par abus médicamenteux."})));
   var dom='—';
@@ -486,20 +547,39 @@ function renderStats(){
     var best=['L','R','B'].filter(function(s){return r.sides[s]===mx});
     dom=best.length>1?'Égalité':SIDES[best[0]];
   }
+  var fn=dnum(view.y+'-'+pad(view.m+1)+'-01');
+  var ln=dnum(view.y+'-'+pad(view.m+1)+'-'+pad(new Date(view.y,view.m+1,0).getDate()));
+  var eps=episodes().filter(function(ep){return ep.startN<=ln&&ep.endN>=fn});
   var tiles=h('div',{class:'tiles'},
     tile(r.crisis,'jours de crise'),
-    tile(r.treat,'jours avec traitement'),
-    tile(r.total,'prises au total'),
+    tile(eps.length,eps.length>1?'épisodes':'épisode'),
+    tile(fmtH(r.hours),'de douleur notées'),
+    tile(r.treat,'jours avec traitement de crise'),
+    tile(r.total,'prises de crise au total'),
     tile(dom,'côté dominant'+(mx>0&&dom!=='Égalité'?' ('+mx+' j)':'')));
   if(S.settings.menses)tiles.append(tile(r.menses,'jours de règles'));
+  if(r.tim.early+r.tim.late>0)tiles.append(tile(r.tim.early,'prises aux premiers signes'),tile(r.tim.late,'prises après attente'));
+  if(S.fondHist.length)tiles.append(tile(r.skip,'jours sans traitement de fond'));
   c.append(tiles);
+  if(eps.length){
+    var er=h('div',{class:'rows'});
+    eps.forEach(function(ep){
+      var nd=ep.days.length,parts=[nd+(nd>1?' jours':' jour')];
+      if(ep.hours>0)parts.push(fmtH(ep.hours)+(ep.missing?' notées':''));
+      if(ep.peak>0)parts.push('pic '+ep.peak+'/10');
+      er.append(h('div',{class:'r'},h('span',{text:nd>1?ddmm(ep.startN)+' → '+ddmm(ep.endN):ddmm(ep.startN)}),h('b',{text:parts.join(' · '),style:'text-align:right'})));
+    });
+    c.append(h('h3',{text:'Épisodes'}),er,h('p',{class:'hint',text:'Des jours de crise consécutifs forment un seul épisode.'}));
+  }
   var rows=h('div',{class:'rows'});
   S.meds.forEach(function(m){
     var n=r.per[m.id]||0;
-    rows.append(h('div',{class:'r'},h('span',{text:m.name}),h('b',{text:n+(n>1?' prises':' prise')})));
+    var tp=r.tper[m.id],extra='';
+    if(tp){var ex=[];if(tp.early)ex.push('tôt '+tp.early);if(tp.late)ex.push('après attente '+tp.late);extra=' ('+ex.join(', ')+')'}
+    rows.append(h('div',{class:'r'},h('span',{text:m.name}),h('b',{text:n+(n>1?' prises':' prise')+extra,style:'text-align:right'})));
   });
   if(!S.meds.length)rows.append(h('p',{class:'muted small',text:'Aucun médicament configuré.'}));
-  c.append(h('h3',{text:'Détail par médicament'}),rows);
+  c.append(h('h3',{text:'Prises par médicament de crise',style:'margin-top:14px'}),rows);
 }
 function tile(v,l){return h('div',{class:'tile'},h('b',{text:String(v)}),h('span',{text:l}))}
 
@@ -612,34 +692,55 @@ function renderSheet(focusPending){
       return h('button',{type:'button','data-c':c,'aria-pressed':String(d.side===c),onclick:function(){d.side=d.side===c?'':c;renderSheet()}},SIDES[c]);
     }))));
 
-  body.append(section('Intensité',
-    h('div',{class:'seg int'},[1,2,3,4,5].map(function(n){
+  body.append(section('Intensité maximale ce jour-là',
+    h('div',{class:'seg int'},[1,2,3,4,5,6,7,8,9,10].map(function(n){
       return h('button',{type:'button','aria-label':'Intensité '+n,'aria-pressed':String(d.intensity===n),onclick:function(){d.intensity=d.intensity===n?0:n;renderSheet()}},String(n));
     })),
-    h('p',{class:'hint',text:'1 = légère, 5 = très forte'})));
+    h('p',{class:'hint',text:'1 = très légère, 10 = douleur maximale imaginable'})));
 
   var dur=h('input',{type:'text',inputmode:'decimal',autocomplete:'off',placeholder:'0','aria-label':'Durée en heures',
     value:d.duration==null?'':String(d.duration).replace('.',','),
     oninput:function(ev){
       var v=ev.target.value.replace(',','.').replace(/[^0-9.]/g,'');
       var n=parseFloat(v);
-      d.duration=(isFinite(n)&&n>0)?Math.min(168,n):null;
+      d.duration=(isFinite(n)&&n>0)?Math.min(24,n):null;
     }});
-  body.append(section('Durée',h('div',{class:'dur'},dur,h('span',{text:'heures'}))));
+  body.append(section('Durée de la douleur ce jour-là',h('div',{class:'dur'},dur,h('span',{text:'heures (24 max)'})),h('p',{class:'hint',text:'Une migraine sur plusieurs jours : notez chaque jour séparément.'})));
 
   var meds=h('div');
   S.meds.forEach(function(m){
     var n=d.doses[m.id]||0;
-    var set=function(v){if(v<=0)delete d.doses[m.id];else d.doses[m.id]=v;renderSheet()};
+    var set=function(v){if(v<=0){delete d.doses[m.id];delete d.timing[m.id]}else d.doses[m.id]=v;renderSheet()};
+    var tm=null;
+    if(n>0){
+      tm=h('div',{class:'tm',role:'group','aria-label':'Moment de la première prise de '+m.name},[['early','Aux premiers signes'],['late','Après avoir attendu']].map(function(o){
+        return h('button',{type:'button','aria-pressed':String(d.timing[m.id]===o[0]),onclick:function(){
+          if(d.timing[m.id]===o[0])delete d.timing[m.id];else d.timing[m.id]=o[0];renderSheet();
+        }},o[1]);
+      }));
+    }
     meds.append(h('div',{class:'dose'},
       h('span',{class:'nm',text:m.name}),
       h('div',{class:'step'},
         h('button',{type:'button','aria-label':'Retirer une prise de '+m.name,disabled:n<=0,onclick:function(){set(n-1)}},'−'),
         h('output',{text:String(n),'aria-label':n+' prises'}),
-        h('button',{type:'button','aria-label':'Ajouter une prise de '+m.name,disabled:n>=4,onclick:function(){set(n+1)}},'+'))));
+        h('button',{type:'button','aria-label':'Ajouter une prise de '+m.name,disabled:n>=4,onclick:function(){set(n+1)}},'+')),
+      tm));
   });
   if(!S.meds.length)meds.append(h('p',{class:'muted',text:'Aucun médicament : ajoutez-en dans les réglages.'}));
-  body.append(section('Traitement (0 à 4 prises)',meds));
+  body.append(section('Traitement de crise (0 à 4 prises)',meds));
+  var fi=fondItemsFor(sh.key);
+  if(fi.length){
+    var fl=h('div');
+    fi.forEach(function(it){
+      var taken=d.fondSkip.indexOf(it.id)<0;
+      fl.append(h('button',{type:'button',class:'row-switch',style:'margin-bottom:8px',role:'switch','aria-checked':String(taken),onclick:function(){
+        var i=d.fondSkip.indexOf(it.id);if(i>=0)d.fondSkip.splice(i,1);else d.fondSkip.push(it.id);renderSheet();
+      }},h('span',{text:it.name}),h('span',{class:'sw'})));
+    });
+    fl.append(h('p',{class:'hint',text:'Activé = pris. Désactivez si vous ne l\'avez pas pris ce jour-là.'}));
+    body.append(section('Traitement de fond',fl));
+  }
 
   if(S.settings.menses){
     var sw=h('button',{type:'button',class:'row-switch',role:'switch','aria-checked':String(d.menses),onclick:function(){d.menses=!d.menses;sh.span=1;renderSheet()}},
@@ -748,15 +849,26 @@ function renderSettings(){
     }},h('span',{text:'Activer le suivi des règles'}),h('span',{class:'sw'})),
     h('p',{class:'hint',text:'Désactivé, les règles disparaissent de la fiche, du calendrier et des statistiques. Les données déjà notées sont conservées.'})));
 
+  var fh=h('div');
+  S.fondHist.slice().reverse().forEach(function(v){
+    fh.append(h('div',{class:'list-row',style:'flex-direction:column;align-items:flex-start;gap:2px'},
+      h('small',{text:'Depuis le '+fmtShort(v.from)}),
+      h('span',{text:v.items.length?v.items.map(function(i){return i.name}).join(', '):'Aucun traitement de fond'})));
+  });
+  if(!S.fondHist.length)fh.append(h('p',{class:'muted',text:'Aucun traitement de fond.'}));
+  b.append(cardSec('Traitement de fond',fh,
+    h('button',{type:'button',class:'btn block',style:'margin-top:10px',onclick:editFond},'Modifier le traitement de fond'),
+    h('p',{class:'hint',text:'Considéré comme pris chaque jour. Un changement s\'applique à partir de la date choisie et l\'historique reste correct. Pour un oubli un jour précis, ouvrez la fiche du jour.'})));
+
   var ml=h('div');
   S.meds.forEach(function(m){
     ml.append(h('button',{type:'button',class:'list-row',onclick:function(){editItem('med',m)}},
-      h('span',null,m.name,' ',h('small',{text:m.cls?'('+CLS_LABEL[m.cls]+')':''})),h('span',{class:'lnk',text:'Modifier'})));
+      h('span',null,m.name,' ',h('small',{text:'('+CLS_LABEL[m.cls||'']+')'})),h('span',{class:'lnk',text:'Modifier'})));
   });
   if(!S.meds.length)ml.append(h('p',{class:'muted',text:'Aucun médicament.'}));
-  b.append(cardSec('Médicaments',ml,
+  b.append(cardSec('Médicaments de crise',ml,
     h('button',{type:'button',class:'btn block',style:'margin-top:10px',onclick:function(){editItem('med',null)}},'+ Ajouter un médicament'),
-    h('p',{class:'hint',text:'Indiquez le dosage dans le nom (ex. Epitomax 50 mg). Le type « Triptan » ou « Anti-inflammatoire » sert à l\'alerte mensuelle.'})));
+    h('p',{class:'hint',text:'Indiquez le dosage dans le nom. Le type est proposé automatiquement d\'après le nom et reste modifiable. Alerte mensuelle : triptan et opioïde ou antalgique combiné au-delà de 10 jours, anti-inflammatoire au-delà de 15 jours.'})));
 
   var sl=h('div');
   S.symptoms.forEach(function(s){
@@ -784,17 +896,30 @@ function renderSettings(){
   $('#settings').scrollTop=st;
 }
 
+function detectCls(name){
+  var n=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  var T=[['triptan',['triptan','imigrane','imitrex','maxalt','naramig','zomig','almogran','relpax','tigreat']],
+    ['opio',['lamaline','izalgy','codeine','codoliprane','klipal','tramadol','topalgic','contramal','ixprim','zaldiar','opium','morphine','oxycodone','oxynorm','skenan']],
+    ['ains',['ketoprofene','ibuprofene','ibuprofen','advil','nurofen','spedifen','toprec','profenid','ketum','naproxene','apranax','diclofenac','voltarene','aspirine','aspegic','celecoxib']]];
+  for(var i=0;i<T.length;i++)for(var j=0;j<T[i][1].length;j++)if(n.indexOf(T[i][1][j])>=0)return T[i][0];
+  return '';
+}
 function editItem(type,item){
   var isMed=type==='med';
-  var nm=h('input',{type:'text',maxlength:'60',autocomplete:'off',value:item?item.name:'',placeholder:isMed?'ex. Epitomax 50 mg':'ex. Fourmillements','aria-label':'Nom'});
-  var sel=null,body=[h('label',{text:'Nom'}),nm];
+  var touched=!!item,sel=null,tip=null;
+  var tipText=function(c){return c?'Type : '+CLS_LABEL[c]+'.':'Type « Autre » : aucune alerte mensuelle.'};
+  var nm=h('input',{type:'text',maxlength:'60',autocomplete:'off',value:item?item.name:'',placeholder:isMed?'ex. Imigrane 20':'ex. Fourmillements','aria-label':'Nom',
+    oninput:function(){if(isMed&&!touched){var c=detectCls(nm.value);sel.value=c;tip.textContent=tipText(c)}}});
+  var body=[h('label',{text:'Nom'}),nm];
   if(isMed){
-    sel=h('select',{'aria-label':'Type'},
+    sel=h('select',{'aria-label':'Type',onchange:function(){touched=true;tip.textContent=tipText(sel.value)}},
       h('option',{value:'',text:'Autre'}),
       h('option',{value:'triptan',text:'Triptan'}),
-      h('option',{value:'ains',text:'Anti-inflammatoire'}));
+      h('option',{value:'ains',text:'Anti-inflammatoire'}),
+      h('option',{value:'opio',text:'Opioïde ou antalgique combiné'}));
     sel.value=item?item.cls:'';
-    body.push(h('label',{text:'Type (pour l\'alerte mensuelle)'}),sel);
+    tip=h('p',{class:'hint',text:tipText(sel.value)});
+    body.push(h('label',{text:'Type (pour l\'alerte mensuelle)'}),sel,tip);
   }
   var acts=[{label:'Annuler'}];
   if(item)acts.unshift({label:'Supprimer',kind:'danger',onClick:function(){
@@ -815,10 +940,42 @@ function editItem(type,item){
   }});
   dialog(item?(isMed?'Modifier le médicament':'Modifier le symptôme'):(isMed?'Nouveau médicament':'Nouveau symptôme'),body,acts);
 }
+function editFond(){
+  var today=todayStr();
+  var rows=fondItemsFor(today).map(function(i){return {id:i.id,name:i.name,orig:i.name}});
+  var date=h('input',{type:'date',value:today,'aria-label':'À partir du'});
+  var list=h('div');
+  var draw=function(){
+    list.textContent='';
+    rows.forEach(function(r,i){
+      list.append(h('div',{class:'addrow'},
+        h('input',{type:'text',maxlength:'60',value:r.name,placeholder:'ex. Epitomax 150 mg / jour','aria-label':'Traitement de fond '+(i+1),oninput:function(ev){r.name=ev.target.value}}),
+        h('button',{type:'button',class:'btn danger','aria-label':'Retirer ce traitement',style:'min-width:52px',onclick:function(){rows.splice(i,1);draw()}},'×')));
+    });
+  };
+  draw();
+  var add=h('button',{type:'button',class:'btn block',style:'margin-top:10px',onclick:function(){rows.push({id:uid(),name:''});draw()}},'+ Ajouter un traitement');
+  dialog('Traitement de fond',[h('label',{text:'À partir du'}),date,h('label',{text:'Pris chaque jour'}),list,add,
+    h('p',{class:'hint',text:'Les changements de protocole enregistrés après cette date seront remplacés. Supprimez toutes les lignes si vous ne prenez plus de traitement de fond.'})],[
+    {label:'Annuler'},
+    {label:'Enregistrer',kind:'primary',onClick:function(){
+      var from=date.value;
+      if(!DATE_RE.test(from)){date.focus();return false}
+      var items=rows.filter(function(r){return r.name.trim()}).map(function(r){var nm=r.name.trim().slice(0,60);return {id:(r.orig&&nm===r.orig)?r.id:uid(),name:nm}});
+      S.fondHist=S.fondHist.filter(function(v){return v.from<from});
+      S.fondHist.push({from:from,items:items});
+      var ids={};S.fondHist.forEach(function(v){v.items.forEach(function(i){ids[i.id]=1})});
+      Object.keys(S.days).forEach(function(k){
+        S.days[k].fondSkip=S.days[k].fondSkip.filter(function(id){return ids[id]});
+        if(isEmpty(S.days[k]))delete S.days[k];
+      });
+      save();renderAll();renderSettings();toast('Traitement de fond mis à jour');
+    }}]);
+}
 function deleteItem(type,id){
   if(type==='med'){
     S.meds=S.meds.filter(function(m){return m.id!==id});
-    Object.keys(S.days).forEach(function(k){delete S.days[k].doses[id]});
+    Object.keys(S.days).forEach(function(k){delete S.days[k].doses[id];delete S.days[k].timing[id]});
   }else{
     S.symptoms=S.symptoms.filter(function(m){return m.id!==id});
     Object.keys(S.days).forEach(function(k){S.days[k].symptoms=S.days[k].symptoms.filter(function(x){return x!==id})});
@@ -834,18 +991,24 @@ function csvCell(v,text){
   return /[;"\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
 }
 function buildCSV(){
-  var cols=['Date','Règles','Côté','Intensité'].concat(S.meds.map(function(m){return m.name}),['Prodrome','Symptômes associés','Durée (h)','Notes']);
-  var lines=[cols.map(function(c){return csvCell(c,true)}).join(';')];
+  var fondCols=[],seen={};
+  S.fondHist.forEach(function(v){v.items.forEach(function(i){if(seen[i.id])seen[i.id].name=i.name;else{seen[i.id]={id:i.id,name:i.name};fondCols.push(seen[i.id])}})});
+  var T=function(v){return csvCell(v,true)},P=function(v){return csvCell(v,false)};
+  var cols=['Date','Règles','Côté','Intensité max (/10)'].concat(S.meds.map(function(m){return m.name}),fondCols.map(function(f){return 'Fond : '+f.name}),['Moment de prise','Prodrome','Symptômes associés','Durée (h)','Notes']);
+  var lines=[cols.map(T).join(';')];
   var symName={};S.symptoms.forEach(function(s){symName[s.id]=s.name});
   Object.keys(S.days).sort().forEach(function(k){
     var e=S.days[k];
-    var row=[k,e.menses?'oui':'',e.side?SIDES[e.side]:'',e.intensity||''];
-    S.meds.forEach(function(m){row.push(e.doses[m.id]||'')});
-    row.push(e.prodrome.join(' | '),e.symptoms.map(function(id){return symName[id]}).filter(Boolean).join(' | '),
-      e.duration!=null?String(e.duration).replace('.',','):'',e.notes||'');
-    lines.push(row.map(function(c,i){return csvCell(c,i===0||i>=4+S.meds.length&&i!==4+S.meds.length+2)}).join(';'));
+    var applicable={};fondItemsFor(k).forEach(function(i){applicable[i.id]=1});
+    var row=[P(k),P(e.menses?'oui':''),P(e.side?SIDES[e.side]:''),P(e.intensity||'')];
+    S.meds.forEach(function(m){row.push(P(e.doses[m.id]||''))});
+    fondCols.forEach(function(f){row.push(P(applicable[f.id]?(e.fondSkip.indexOf(f.id)>=0?'non':'oui'):''))});
+    row.push(T(S.meds.filter(function(m){return e.timing[m.id]}).map(function(m){return m.name+' : '+(e.timing[m.id]==='early'?'tôt':'après attente')}).join(' | ')));
+    row.push(T(e.prodrome.join(' | ')),T(e.symptoms.map(function(id){return symName[id]}).filter(Boolean).join(' | ')),
+      P(e.duration!=null?String(e.duration).replace('.',','):''),T(e.notes||''));
+    lines.push(row.join(';'));
   });
-  return '﻿'+lines.join('\r\n')+'\r\n';
+  return '\uFEFF'+lines.join('\r\n')+'\r\n';
 }
 function deliver(name,mime,text){
   var blob=new Blob([text],{type:mime});
